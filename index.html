@@ -149,62 +149,22 @@
   }
   var qr = makeQR();
 
-  // Een "factuur" als afbeelding: de betaal-QR met de gegevens eronder. Die deel je naar je
-  // bankapp (KBC Mobile: Delen ▸ KBC Mobile), die leest de QR en zet de overschrijving klaar.
-  function invoiceBlob(callback) {
-    var count = qr.getModuleCount(), cell = 12, quiet = 4 * cell;
-    var size = count * cell + 2 * quiet, width = size + 160;
-    var canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = size + 380;
-    var c = canvas.getContext("2d");
-    c.fillStyle = "#ffffff"; c.fillRect(0, 0, canvas.width, canvas.height);
-    c.fillStyle = "#000000";
-    c.font = "600 34px -apple-system, Helvetica, Arial, sans-serif";
-    c.textAlign = "center";
-    c.fillText("Betaalverzoek" + (name ? " – " + name : ""), width / 2, 56);
-    var left = (width - size) / 2 + quiet, top = 90 + quiet;
-    for (var r = 0; r < count; r++) {
-      for (var k = 0; k < count; k++) {
-        if (qr.isDark(r, k)) c.fillRect(left + k * cell, top + r * cell, cell, cell);
-      }
-    }
-    c.textAlign = "left";
-    var y = 90 + size + 40, x = 60;
-    [["Bedrag", euro], ["Rekening", prettyIBAN], ["Begunstigde", name], ["Mededeling", remittance]]
-      .forEach(function (line) {
-        if (!line[1]) return;
-        c.font = "400 24px -apple-system, Helvetica, Arial, sans-serif";
-        c.fillStyle = "#6c6c70"; c.fillText(line[0], x, y);
-        c.font = "600 30px -apple-system, Helvetica, Arial, sans-serif";
-        c.fillStyle = "#000000"; c.fillText(line[1].slice(0, 46), x, y + 34);
-        y += 76;
-      });
-    canvas.toBlob(callback, "image/png");
-  }
-
-  if (qr) {
-    var pay = el("button", "primary", "Betaal in je bankapp");
-    pay.type = "button";
-    pay.addEventListener("click", function () {
-      invoiceBlob(function (blob) {
-        var file = new File([blob], "betaalverzoek.png", { type: "image/png" });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file], title: "Betaalverzoek" }).catch(function () {});
-        } else {
-          var a = document.createElement("a");
-          a.href = URL.createObjectURL(blob); a.download = "betaalverzoek.png";
-          document.body.appendChild(a); a.click(); a.remove();
-        }
-      });
-    });
-    app.appendChild(pay);
-    var steps = el("ol", "steps");
-    ["Tik hierboven en kies je bankapp in het deelmenu (bv. KBC Mobile).",
-     "Je bankapp leest de betaalcode: rekening, bedrag en mededeling staan klaar.",
-     "Staat je bank er niet bij? Bewaar de afbeelding en kies ze in de scanner van je bankapp, of kopieer de gegevens hieronder."]
-      .forEach(function (t) { steps.appendChild(el("li", null, t)); });
-    app.appendChild(steps);
-  }
+  // Geen enkele Belgische bank laat een webpagina een overschrijving klaarzetten (dat kan
+  // enkel via een betaalprovider zoals Payconiq/Wero met een handelaarscontract). Wat wél
+  // altijd werkt: het rekeningnummer kopiëren — de bankapps stellen bij een nieuwe
+  // overschrijving zelf voor om het geplakte nummer te gebruiken.
+  var pay = el("button", "primary", "Kopieer rekeningnummer");
+  pay.type = "button";
+  pay.addEventListener("click", function () {
+    copy(iban, pay);
+  });
+  app.appendChild(pay);
+  var steps = el("ol", "steps");
+  ["Tik hierboven: het rekeningnummer staat op je klembord.",
+   "Open je bankapp en kies een nieuwe overschrijving — plak het rekeningnummer.",
+   "Neem bedrag en mededeling over (of kopieer ze hieronder) en bevestig."]
+    .forEach(function (t) { steps.appendChild(el("li", null, t)); });
+  app.appendChild(steps);
 
   app.appendChild(el("h2", null, "Overschrijving"));
   var details = el("div", "section");
